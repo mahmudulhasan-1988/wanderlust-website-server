@@ -29,20 +29,12 @@ async function run() {
 
     const db = client.db("wanderlust-website-data");
     const destinationCollection = db.collection("test-destinationCollection");
+    const bookingCollection = db.collection("bookings");
 
     app.get("/destinations", async (req, res) => {
         const result = await destinationCollection.find().toArray();
         res.json(result);
     });
-
-// Get all destinations data
-//     app.get("/destinations", async (req, res) => {
-
-//     const result = await destinationsCollection.find().toArray();
-
-//     res.send(result);
-// });
-
 
 
     app.post("/destinations", async (req, res) => {
@@ -79,6 +71,28 @@ async function run() {
       const result = await destinationCollection.deleteOne({_id: new ObjectId(id)});
       res.json(result);
     });
+
+    // Bookings API
+    app.post("/booking", async (req, res)=>{
+      const bookingData = req.body;
+      const result = await bookingCollection.insertOne(bookingData);
+      res.json(result);
+    })
+
+    // Get all bookings
+    app.get("/booking/:userId", async (req, res)=>{
+      const {userId} = req.params;
+      const result = await bookingCollection.find({userId}).toArray();
+      res.json(result);
+    });
+
+    // bookings delete API
+    app.delete("/booking/:bookingId", async (req, res)=>{
+      const {bookingId} = req.params;
+      const result = await bookingCollection.deleteOne({_id: new ObjectId(bookingId)});
+      res.json(result);
+    })
+
 
     await client.db("admin").command({ ping: 1 });
     console.log("Pinged your deployment. You successfully connected to MongoDB!");
