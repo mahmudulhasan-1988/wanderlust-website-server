@@ -6,6 +6,7 @@ const dotenv = require("dotenv");
 const cors = require("cors");
 dotenv.config()
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
+const { createRemoteJWKSet, jwtVerify } = require("jose-cjs");
 const uri = process.env.MONGODB_URI;
 
 const app = express()
@@ -21,6 +22,31 @@ const client = new MongoClient(uri, {
     deprecationErrors: true,
   }
 });
+
+
+const JWKS = createRemoteJWKSet(
+  new URL("http://localhost:3000/api/auth/jwks")
+)
+
+const verifyToken = async (req, res, next) =>{
+  const authHeader = req?.headers.authorization
+  if(!authHeader){
+    return res.status(401).json({message: "Unauthorized"})
+  }
+  const token = authHeader.split(" ")[1]
+  if(!token){
+    return res.status(401).json({message: "Unauthorized"})
+  }
+
+
+  try{
+    const {payload} = await jwtVerify(token, JWKS)
+    next()
+  }catch (error){
+    return res.status(403).json({
+      message: "Forbidden"});
+  }
+}
 
 
 async function run() {
@@ -44,8 +70,8 @@ async function run() {
         res.json(result);
     });
 
-    // Get a single destination details by ID
-    app.get("/destinations/:id", async (req, res)=>{
+    // Get a single destination details by ID 
+    app.get("/destinations/:id", verifyToken, async (req, res)=>{
       const {id} = req.params
 
       const result = await destinationCollection.findOne({_id: new ObjectId(id)});
@@ -65,7 +91,7 @@ async function run() {
     });
 
     // Delete a destination by ID
-    app.delete("/destinations/:id", async (req, res)=>{
+    app.delete("/destinations/:id", verifyToken, async (req, res)=>{
       const {id} = req.params;
 
       const result = await destinationCollection.deleteOne({_id: new ObjectId(id)});
@@ -73,7 +99,7 @@ async function run() {
     });
 
     // Bookings API
-    app.post("/booking", async (req, res)=>{
+    app.post("/booking",verifyToken, async (req, res)=>{
       const bookingData = req.body;
       const result = await bookingCollection.insertOne(bookingData);
       res.json(result);
